@@ -5,7 +5,7 @@ const BlogPostSchema = new mongoose.Schema(
     title: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
     content: mongoose.Schema.Types.Mixed,
-    excerpt: String,
+    excerpt: { type: String, maxlength: 200 },
     featuredImage: String,
     authorId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -23,9 +23,13 @@ const BlogPostSchema = new mongoose.Schema(
     status: { type: String, enum: ["draft", "published"], default: "draft" },
     publishedAt: Date,
     views: { type: Number, default: 0 },
+    relatedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "BlogPost" }],
   },
   { timestamps: true }
 );
+
+BlogPostSchema.index({ sportId: 1, status: 1 });
+BlogPostSchema.index({ clubId: 1, status: 1 });
 
 export const BlogPost =
   mongoose.models.BlogPost ?? mongoose.model("BlogPost", BlogPostSchema);

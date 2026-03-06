@@ -2,10 +2,26 @@ import mongoose from "mongoose";
 
 const DocumentSchema = new mongoose.Schema(
   {
-    title: String,
-    fileUrl: String,
-    clubId: { type: mongoose.Schema.Types.ObjectId, ref: "Club" },
-    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    title: { type: String, required: true },
+    description: String,
+    fileUrl: { type: String, required: true },
+    fileType: String,
+    fileSize: Number,
+    clubId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Club",
+      required: true,
+    },
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    category: {
+      type: String,
+      enum: ["financije", "treniranje", "utakmice", "ostalo"],
+    },
+    isPrivate: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
