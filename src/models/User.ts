@@ -22,6 +22,7 @@ const UserSchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
     },
     emailVerified: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

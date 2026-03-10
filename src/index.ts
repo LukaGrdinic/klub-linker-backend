@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { connectDB } from "./config/db";
 import authRoutes from "./routes/auth";
+import adminRoutes from "./routes/admin";
 import sportsRoutes from "./routes/sports";
 import clubsRoutes from "./routes/clubs";
 import postsRoutes from "./routes/posts";
@@ -18,6 +19,7 @@ app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/sports", sportsRoutes);
 app.use("/api/clubs", clubsRoutes);
 app.use("/api/posts", postsRoutes);

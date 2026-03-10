@@ -6,6 +6,7 @@ import { z } from "zod";
 import { User } from "../models/User";
 import { Sport } from "../models/Sport";
 import { Club } from "../models/Club";
+import { ClubRegistrationInvite } from "../models/ClubRegistrationInvite";
 import { requireAuth } from "../middleware/auth";
 
 const router = Router();
@@ -30,6 +31,7 @@ const registerKlubSchema = z.object({
   password: z.string().min(6),
   sportId: z.string().min(1),
   city: z.string().min(1),
+  token: z.string().min(1, "Link za registraciju je neispravan ili istekao."),
 });
 
 function createToken(userId: string, email: string, role: string): string {
@@ -72,6 +74,11 @@ router.post("/login", async (req: Request, res: Response) => {
       return;
     }
 
+    const isActive = (user as { isActive?: boolean }).isActive !== false;
+    if (!isActive) {
+      res.status(403).json({ error: "Nalog je deaktiviran." });
+      return;
+    }
     if (user.status !== "approved") {
       res.status(403).json({
         error:
@@ -131,7 +138,7 @@ router.post("/register/sportista", async (req: Request, res: Response) => {
           }
         : undefined,
     });
-    const token = createToken(String(user._id), user.role);
+    const token = createToken(String(user._id), user.email, user.role);
     res.status(201).json({
       token,
       user: sanitizeUser(user),
@@ -152,7 +159,17 @@ router.post("/register/klub", async (req: Request, res: Response) => {
         .json({ error: "Neispravni podaci.", details: parsed.error.flatten() });
       return;
     }
-    const { clubName, email, password, sportId, city } = parsed.data;
+    const { clubName, email, password, sportId, city, token } = parsed.data;
+
+    const invite = await ClubRegistrationInvite.findOne({
+      token,
+      usedAt: null,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!invite) {
+      res.status(400).json({ error: "Link za registraciju je neispravan, istekao ili je već iskorišten." });
+      return;
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -193,6 +210,7 @@ router.post("/register/klub", async (req: Request, res: Response) => {
     });
 
     await User.findByIdAndUpdate(user._id, { clubId: club._id });
+    await ClubRegistrationInvite.findByIdAndUpdate(invite._id, { usedAt: new Date() });
 
     res.status(201).json({
       message:
@@ -202,6 +220,25 @@ router.post("/register/klub", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Register klub error:", err);
     res.status(500).json({ error: "Greška pri registraciji kluba." });
+  }
+});
+
+// GET /api/auth/validate-club-invite?token= – provjera invite linka (javno)
+router.get("/validate-club-invite", async (req: Request, res: Response) => {
+  try {
+    const token = req.query.token as string;
+    if (!token) {
+      res.json({ valid: false });
+      return;
+    }
+    const invite = await ClubRegistrationInvite.findOne({
+      token,
+      usedAt: null,
+      expiresAt: { $gt: new Date() },
+    });
+    res.json({ valid: !!invite });
+  } catch {
+    res.json({ valid: false });
   }
 });
 
