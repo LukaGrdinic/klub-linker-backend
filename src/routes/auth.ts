@@ -31,7 +31,8 @@ const registerKlubSchema = z.object({
   password: z.string().min(6),
   sportId: z.string().min(1),
   city: z.string().min(1),
-  token: z.string().min(1, "Link za registraciju je neispravan ili istekao."),
+  /** Ako je poslan, mora biti validan invite; ako nije, javna registracija na /registracija/klub */
+  token: z.string().optional(),
 });
 
 function createToken(userId: string, email: string, role: string): string {
@@ -160,15 +161,19 @@ router.post("/register/klub", async (req: Request, res: Response) => {
       return;
     }
     const { clubName, email, password, sportId, city, token } = parsed.data;
+    const inviteToken = token?.trim();
 
-    const invite = await ClubRegistrationInvite.findOne({
-      token,
-      usedAt: null,
-      expiresAt: { $gt: new Date() },
-    });
-    if (!invite) {
-      res.status(400).json({ error: "Link za registraciju je neispravan, istekao ili je već iskorišten." });
-      return;
+    let invite: InstanceType<typeof ClubRegistrationInvite> | null = null;
+    if (inviteToken) {
+      invite = await ClubRegistrationInvite.findOne({
+        token: inviteToken,
+        usedAt: null,
+        expiresAt: { $gt: new Date() },
+      });
+      if (!invite) {
+        res.status(400).json({ error: "Link za registraciju je neispravan, istekao ili je već iskorišten." });
+        return;
+      }
     }
 
     const existingUser = await User.findOne({ email });
@@ -210,7 +215,9 @@ router.post("/register/klub", async (req: Request, res: Response) => {
     });
 
     await User.findByIdAndUpdate(user._id, { clubId: club._id });
-    await ClubRegistrationInvite.findByIdAndUpdate(invite._id, { usedAt: new Date() });
+    if (invite) {
+      await ClubRegistrationInvite.findByIdAndUpdate(invite._id, { usedAt: new Date() });
+    }
 
     res.status(201).json({
       message:
