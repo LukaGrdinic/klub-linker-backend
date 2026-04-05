@@ -1,17 +1,14 @@
 import { Router, Request, Response } from "express";
-import crypto from "crypto";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roleCheck";
 import { Club } from "../models/Club";
 import { User } from "../models/User";
 import { Sport } from "../models/Sport";
 import { BlogPost } from "../models/BlogPost";
-import { ClubRegistrationInvite } from "../models/ClubRegistrationInvite";
 import slugify from "slugify";
 import { z } from "zod";
 
 const router = Router();
-const INVITE_EXPIRES_DAYS = 7;
 
 router.use(requireAuth);
 router.use(requireRole("superAdmin"));
@@ -138,30 +135,6 @@ router.get("/dashboard/charts", async (_req: Request, res: Response) => {
   } catch (err) {
     console.error("Admin dashboard charts error:", err);
     res.status(500).json({ error: "Greška pri učitavanju grafika." });
-  }
-});
-
-// POST /api/admin/club-invite – kreira invite token i vraća link
-router.post("/club-invite", async (req: Request, res: Response) => {
-  try {
-    const userId = (req as Request & { userId: string }).userId;
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRES_DAYS);
-    await ClubRegistrationInvite.create({
-      token,
-      createdBy: userId,
-      expiresAt,
-    });
-    const locale = (req.query.locale as string) || "me";
-    const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const link = `${baseUrl}/${locale}/registracija/klub?token=${token}`;
-    res.status(201).json({
-      data: { link, token, expiresAt },
-    });
-  } catch (err) {
-    console.error("Club invite create error:", err);
-    res.status(500).json({ error: "Greška pri kreiranju invite linka." });
   }
 });
 
