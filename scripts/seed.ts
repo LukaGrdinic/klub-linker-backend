@@ -182,15 +182,8 @@ async function seed() {
       await BlogPost.create({
         title: "Dobrodošli na Klub Linker!",
         slug: "dobrodosli-na-klub-linker",
-        content: {
-          type: "doc",
-          content: [
-            {
-              type: "paragraph",
-              content: [{ type: "text", text: "Dobrodošli na novu platformu za sportske klubove i sportiste Crne Gore." }],
-            },
-          ],
-        },
+        content:
+          "<p>Dobrodošli na novu platformu za sportske klubove i sportiste Crne Gore.</p>",
         excerpt: "Dobrodošli na novu platformu za sportske klubove i sportiste Crne Gore.",
         authorId: superAdmin._id,
         sportId: fudbal._id,

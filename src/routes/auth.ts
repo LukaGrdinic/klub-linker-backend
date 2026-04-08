@@ -210,7 +210,7 @@ router.post("/register/klub", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/auth/me – trenutni korisnik (zaštićeno)
+// GET /api/auth/me – trenutni korisnik (zaštićeno); za club admin uključuje osnovne podatke o klubu
 router.get("/me", requireAuth, async (req: Request, res: Response) => {
   const userId = (req as Request & { userId: string }).userId;
   const user = await User.findById(userId);
@@ -218,7 +218,24 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
     res.status(401).json({ error: "Korisnik nije pronađen." });
     return;
   }
-  res.json(sanitizeUser(user));
+  const base = sanitizeUser(user);
+  if (user.role === "clubAdmin" && user.clubId) {
+    const club = await Club.findById(user.clubId).select("name slug status location").lean();
+    if (club) {
+      res.json({
+        ...base,
+        club: {
+          id: String(club._id),
+          name: club.name,
+          slug: club.slug,
+          status: club.status,
+          city: club.location?.city,
+        },
+      });
+      return;
+    }
+  }
+  res.json(base);
 });
 
 export default router;
