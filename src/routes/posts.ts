@@ -93,11 +93,15 @@ router.get("/", async (req: Request, res: Response) => {
     const page = Math.max(1, Number(req.query.page) || 1);
     const skip = (page - 1) * limit;
     const sportIdRaw = typeof req.query.sportId === "string" ? req.query.sportId.trim() : "";
+    const clubIdRaw = typeof req.query.clubId === "string" ? req.query.clubId.trim() : "";
     const qRaw = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
     const filter: Record<string, unknown> = { status: "published", visibility: "public" };
     if (sportIdRaw && mongoose.Types.ObjectId.isValid(sportIdRaw)) {
       filter.sportId = new mongoose.Types.ObjectId(sportIdRaw);
+    }
+    if (clubIdRaw && mongoose.Types.ObjectId.isValid(clubIdRaw)) {
+      filter.clubId = new mongoose.Types.ObjectId(clubIdRaw);
     }
     if (qRaw) {
       const rx = new RegExp(escapeRegex(qRaw), "i");
