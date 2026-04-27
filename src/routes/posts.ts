@@ -94,6 +94,7 @@ router.get("/", async (req: Request, res: Response) => {
     const skip = (page - 1) * limit;
     const sportIdRaw = typeof req.query.sportId === "string" ? req.query.sportId.trim() : "";
     const clubIdRaw = typeof req.query.clubId === "string" ? req.query.clubId.trim() : "";
+    const authorIdRaw = typeof req.query.authorId === "string" ? req.query.authorId.trim() : "";
     const qRaw = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
     const filter: Record<string, unknown> = { status: "published", visibility: "public" };
@@ -102,6 +103,9 @@ router.get("/", async (req: Request, res: Response) => {
     }
     if (clubIdRaw && mongoose.Types.ObjectId.isValid(clubIdRaw)) {
       filter.clubId = new mongoose.Types.ObjectId(clubIdRaw);
+    }
+    if (authorIdRaw && mongoose.Types.ObjectId.isValid(authorIdRaw)) {
+      filter.authorId = new mongoose.Types.ObjectId(authorIdRaw);
     }
     if (qRaw) {
       const rx = new RegExp(escapeRegex(qRaw), "i");

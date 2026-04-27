@@ -10,6 +10,7 @@ import postsRoutes from "./routes/posts";
 import notificationsRoutes from "./routes/notifications";
 import searchRoutes from "./routes/search";
 import uploadRoutes from "./routes/upload";
+import athletesRoutes from "./routes/athletes";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -23,6 +24,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/sports", sportsRoutes);
 app.use("/api/clubs", clubsRoutes);
 app.use("/api/posts", postsRoutes);
+app.use("/api/athletes", athletesRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/upload", uploadRoutes);
