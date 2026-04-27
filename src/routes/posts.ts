@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import type { Document } from "mongoose";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { optionalAuth, requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roleCheck";
@@ -82,27 +83,95 @@ router.get("/me", requireAuth, requireRole("clubAdmin"), async (req: Request, re
   }
 });
 
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 router.get("/", async (req: Request, res: Response) => {
   try {
-    const limit = Math.min(Number(req.query.limit) || 20, 50);
-    const posts = await BlogPost.find({ status: "published", visibility: "public" })
-      .sort({ publishedAt: -1 })
-      .limit(limit)
-      .select("-content")
-      .lean();
+    const limit = Math.min(Math.max(1, Number(req.query.limit) || 20), 50);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const skip = (page - 1) * limit;
+    const sportIdRaw = typeof req.query.sportId === "string" ? req.query.sportId.trim() : "";
+    const qRaw = typeof req.query.q === "string" ? req.query.q.trim() : "";
+
+    const filter: Record<string, unknown> = { status: "published", visibility: "public" };
+    if (sportIdRaw && mongoose.Types.ObjectId.isValid(sportIdRaw)) {
+      filter.sportId = new mongoose.Types.ObjectId(sportIdRaw);
+    }
+    if (qRaw) {
+      const rx = new RegExp(escapeRegex(qRaw), "i");
+      filter.$or = [{ title: rx }, { excerpt: rx }, { tags: rx }];
+    }
+
+    const [total, posts] = await Promise.all([
+      BlogPost.countDocuments(filter),
+      BlogPost.find(filter)
+        .sort({ publishedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .select("-content")
+        .populate("authorId", "name athleteProfile.photo")
+        .populate("clubId", "name slug logo")
+        .populate("sportId", "name slug")
+        .lean(),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
     res.json({
-      data: posts.map((p) => ({
-        id: String(p._id),
-        title: p.title,
-        slug: p.slug,
-        excerpt: p.excerpt,
-        featuredImage: p.featuredImage,
-        tags: p.tags,
-        publishedAt: p.publishedAt,
-        clubId: p.clubId ? String(p.clubId) : null,
-        sportId: String(p.sportId),
-        views: p.views,
-      })),
+      data: posts.map((p) => {
+        const author = p.authorId as unknown as {
+          _id: mongoose.Types.ObjectId;
+          name?: string;
+          athleteProfile?: { photo?: string };
+        } | null;
+        const club = p.clubId as unknown as {
+          _id: mongoose.Types.ObjectId;
+          name?: string;
+          slug?: string;
+          logo?: string;
+        } | null;
+        const sport = p.sportId as unknown as {
+          _id: mongoose.Types.ObjectId;
+          name?: { me: string; en: string };
+          slug?: string;
+        } | null;
+
+        return {
+          id: String(p._id),
+          title: p.title,
+          slug: p.slug,
+          excerpt: p.excerpt,
+          featuredImage: p.featuredImage,
+          tags: p.tags,
+          publishedAt: p.publishedAt,
+          views: p.views ?? 0,
+          author: author
+            ? {
+                id: String(author._id),
+                name: author.name ?? "",
+                avatar: author.athleteProfile?.photo ?? null,
+              }
+            : null,
+          club: club
+            ? {
+                id: String(club._id),
+                name: club.name ?? "",
+                slug: club.slug ?? "",
+                logo: club.logo ?? null,
+              }
+            : null,
+          sport: sport
+            ? {
+                id: String(sport._id),
+                name: sport.name ?? { me: "", en: "" },
+                slug: sport.slug ?? "",
+              }
+            : null,
+        };
+      }),
+      meta: { page, limit, total, totalPages },
     });
   } catch (e) {
     console.error("posts list", e);
