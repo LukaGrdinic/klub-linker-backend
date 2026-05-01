@@ -1,16 +1,17 @@
-import { Resend } from "resend";
+import { emailFrom, getResendClient } from "./resendClient";
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
-
-export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+export async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+): Promise<boolean> {
+  const resend = getResendClient();
   if (!resend) {
     console.warn("RESEND_API_KEY nije postavljen, email nije poslan.");
     return false;
   }
   const { error } = await resend.emails.send({
-    from: "Klub Linker <onboarding@resend.dev>",
+    from: emailFrom(),
     to,
     subject,
     html,
@@ -21,5 +22,3 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
   }
   return true;
 }
-
-export { resend };
